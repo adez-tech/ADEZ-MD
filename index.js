@@ -4,11 +4,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import QRCode from "qrcode";
 
-import {
-  default as makeWASocket,
-  useMultiFileAuthState,
-  DisconnectReason
-} from "@whiskeysockets/baileys";
+import baileys from "@whiskeysockets/baileys";
 
 import pino from "pino";
 
@@ -18,7 +14,15 @@ import {
 } from "./router.js";
 
 
+const {
+  default: makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason
+} = baileys;
+
+
 dotenv.config();
+
 
 
 const app = express();
@@ -26,9 +30,9 @@ const app = express();
 const httpServer = createServer(app);
 
 
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*"
+const io = new Server(httpServer,{
+  cors:{
+    origin:"*"
   }
 });
 
@@ -36,7 +40,8 @@ const io = new Server(httpServer, {
 const PORT = process.env.PORT || 3000;
 
 
-app.get("/", (req,res)=>{
+
+app.get("/",(req,res)=>{
 
 res.send(`
 
@@ -73,8 +78,7 @@ margin-top:30px;
 
 <p>WhatsApp Bot Online</p>
 
-
-<img id="qr"/>
+<img id="qr">
 
 
 <script src="/socket.io/socket.io.js"></script>
@@ -105,6 +109,8 @@ document.getElementById("qr").src=data;
 
 
 
+
+
 let sock;
 
 
@@ -112,24 +118,35 @@ let sock;
 async function startBot(){
 
 
-const {state,saveCreds} =
+const { state, saveCreds } =
+
 await useMultiFileAuthState("./session");
+
+
 
 
 
 sock = makeWASocket({
 
-auth: state,
+auth:state,
+
 
 logger:pino({
+
 level:"silent"
+
 }),
+
 
 syncFullHistory:false,
 
+
 fireInitQueries:false
 
+
 });
+
+
 
 
 
@@ -137,6 +154,18 @@ sock.ev.on(
 "creds.update",
 saveCreds
 );
+
+
+
+
+
+
+await loadCommands();
+
+await loadObservers();
+
+
+
 
 
 
@@ -153,12 +182,18 @@ qr
 
 
 
+
 if(qr){
 
-console.log("QR Generated");
+
+console.log(
+"QR Generated"
+);
+
 
 
 const qrImage =
+
 await QRCode.toDataURL(qr);
 
 
@@ -170,6 +205,7 @@ qrImage
 
 
 }
+
 
 
 
@@ -186,11 +222,14 @@ console.log(
 
 
 
+
+
+
 if(connection==="close"){
 
 
-
 const reason =
+
 lastDisconnect
 ?.error
 ?.output
@@ -198,11 +237,13 @@ lastDisconnect
 
 
 
+
+
 if(reason === DisconnectReason.loggedOut){
 
 
 console.log(
-"Logged out"
+"Logged out. Delete session."
 );
 
 
@@ -222,23 +263,39 @@ startBot();
 }
 
 
-}
-
-
 
 }
 
-);
+
+
+});
 
 
 
-await loadCommands();
 
-await loadObservers();
+sock.ev.on(
+"messages.upsert",
+async({messages})=>{
+
+
+const msg = messages[0];
+
+
+if(!msg.message)
+return;
+
+
+
+// commands handled by router
+
+
+});
 
 
 
 }
+
+
 
 
 
@@ -246,12 +303,17 @@ startBot();
 
 
 
+
+
+
 httpServer.listen(
 PORT,
 ()=>{
 
+
 console.log(
 `🚀 ADEZ-MD running on ${PORT}`
 );
+
 
 });
