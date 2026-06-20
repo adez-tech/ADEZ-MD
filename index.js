@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import QRCode from "qrcode";
 
 import {
   default as makeWASocket,
@@ -13,9 +14,8 @@ import pino from "pino";
 
 import {
   loadCommands,
-  loadObservers,
-  runCommand
-} from "./router.js";
+  loadObservers
+} from "./lib/router.js";
 
 
 dotenv.config();
@@ -26,7 +26,7 @@ const app = express();
 const httpServer = createServer(app);
 
 
-const io = new Server(httpServer, {
+const io = new Server(httpServer,{
   cors:{
     origin:"*"
   }
@@ -36,42 +36,121 @@ const io = new Server(httpServer, {
 const PORT = process.env.PORT || 3000;
 
 
-app.get("/", (req,res)=>{
+let currentQR = null;
 
-  res.json({
-    status:"online",
-    bot:"ADEZ-MD"
-  });
+
+
+app.get("/",(req,res)=>{
+
+res.send(`
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<title>ADEZ-MD</title>
+
+<style>
+
+body{
+background:#111;
+color:white;
+text-align:center;
+font-family:sans-serif;
+}
+
+img{
+width:300px;
+margin-top:30px;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<h1>🚀 ADEZ-MD</h1>
+
+<p>Status: Online</p>
+
+
+<img id="qr"/>
+
+
+
+<script src="/socket.io/socket.io.js"></script>
+
+
+<script>
+
+
+const socket = io();
+
+
+socket.on("qr",(data)=>{
+
+document.getElementById("qr").src=data;
+
 
 });
+
+
+</script>
+
+
+</body>
+
+
+</html>
+
+
+`);
+
+});
+
+
+
 
 
 let sock;
 
 
+
 async function startBot(){
 
 
-const { state, saveCreds } =
+
+const {state,saveCreds} =
 await useMultiFileAuthState("./session");
 
 
 
 sock = makeWASocket({
 
-  auth:state,
 
-  logger:pino({
-    level:"silent"
-  }),
+auth:state,
 
-  printQRInTerminal:true,
 
-  syncFullHistory:false,
+logger:pino({
 
-  fireInitQueries:false
+level:"silent"
+
+}),
+
+
+syncFullHistory:false,
+
+
+fireInitQueries:false
+
 
 });
+
 
 
 
@@ -80,35 +159,6 @@ sock.ev.on(
 saveCreds
 );
 
-
-
-await loadCommands();
-
-await loadObservers();
-
-
-
-sock.ev.on(
-"messages.upsert",
-async({messages})=>{
-
-
-const msg = messages[0];
-
-
-if(!msg.message)
-return;
-
-
-
-await runCommand(
-sock,
-msg
-);
-
-
-
-});
 
 
 
@@ -122,26 +172,35 @@ const {
 connection,
 lastDisconnect,
 qr
-
 }=update;
+
 
 
 
 if(qr){
 
-console.log(
-"Scan QR:",
-qr
-);
+
+console.log("QR Generated");
+
+
+const qrImage =
+await QRCode.toDataURL(qr);
+
+
+
+currentQR = qrImage;
+
 
 
 io.emit(
 "qr",
-qr
+qrImage
 );
 
 
+
 }
+
 
 
 
@@ -153,11 +212,14 @@ console.log(
 );
 
 
+
 }
 
 
 
+
 if(connection==="close"){
+
 
 
 const reason =
@@ -168,14 +230,13 @@ lastDisconnect
 
 
 
-if(
-reason === DisconnectReason.loggedOut
-){
+if(reason === DisconnectReason.loggedOut){
 
 
 console.log(
-"Logged out. Delete session."
+"Logged out"
 );
+
 
 
 }
@@ -188,25 +249,38 @@ console.log(
 );
 
 
+
+startBot();
+
+
+
+}
+
+
+}
+
+
+
+}
+
+);
+
+
+
+await loadCommands();
+
+await loadObservers();
+
+
+
+}
+
+
+
+
 startBot();
 
 
-}
-
-
-}
-
-
-
-});
-
-
-
-}
-
-
-
-startBot();
 
 
 
