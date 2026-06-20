@@ -15,14 +15,13 @@ import {
   loadCommands,
   loadObservers,
   runCommand
-} from "./lib/router.js";
+} from "./router.js";
 
 
 dotenv.config();
 
 
 const app = express();
-
 
 const httpServer = createServer(app);
 
@@ -37,55 +36,76 @@ const io = new Server(httpServer, {
 const PORT = process.env.PORT || 3000;
 
 
-
 app.get("/", (req,res)=>{
 
-res.json({
-
-status:"online",
-
-bot:"ADEZ-MD"
-
-});
+  res.json({
+    status:"online",
+    bot:"ADEZ-MD"
+  });
 
 });
-
 
 
 let sock;
-
 
 
 async function startBot(){
 
 
 const { state, saveCreds } =
-
 await useMultiFileAuthState("./session");
 
 
 
 sock = makeWASocket({
 
+  auth:state,
 
-auth: state,
+  logger:pino({
+    level:"silent"
+  }),
 
+  printQRInTerminal:true,
 
-logger:pino({
+  syncFullHistory:false,
 
-level:"silent"
+  fireInitQueries:false
 
-}),
-
-
-
-printQRInTerminal:true,
-
-
-syncFullHistory:false,
+});
 
 
-fireInitQueries:false
+
+sock.ev.on(
+"creds.update",
+saveCreds
+);
+
+
+
+await loadCommands();
+
+await loadObservers();
+
+
+
+sock.ev.on(
+"messages.upsert",
+async({messages})=>{
+
+
+const msg = messages[0];
+
+
+if(!msg.message)
+return;
+
+
+
+await runCommand(
+sock,
+msg
+);
+
 
 
 });
@@ -94,41 +114,20 @@ fireInitQueries:false
 
 
 sock.ev.on(
-
-"creds.update",
-
-saveCreds
-
-);
-
-
-
-
-
-sock.ev.on(
-
 "connection.update",
-
 async(update)=>{
 
 
-
 const {
-
 connection,
-
 lastDisconnect,
-
 qr
 
 }=update;
 
 
 
-
-
 if(qr){
-
 
 console.log(
 "Scan QR:",
@@ -137,17 +136,12 @@ qr
 
 
 io.emit(
-
 "qr",
-
 qr
-
 );
 
 
 }
-
-
 
 
 
@@ -159,27 +153,14 @@ console.log(
 );
 
 
-
-await loadCommands();
-
-
-await loadObservers();
-
-
-
 }
-
-
-
 
 
 
 if(connection==="close"){
 
 
-
 const reason =
-
 lastDisconnect
 ?.error
 ?.output
@@ -187,31 +168,24 @@ lastDisconnect
 
 
 
-
-
-if(reason === DisconnectReason.loggedOut){
+if(
+reason === DisconnectReason.loggedOut
+){
 
 
 console.log(
-
-"Logged out. Delete session and login again."
-
+"Logged out. Delete session."
 );
 
 
 }
-
-
 
 else{
 
 
 console.log(
-
 "Reconnecting..."
-
 );
-
 
 
 startBot();
@@ -220,83 +194,30 @@ startBot();
 }
 
 
-
 }
 
 
 
-}
-
-
-);
-
-
-
-
-
-
-sock.ev.on(
-
-"messages.upsert",
-
-async({messages})=>{
-
-
-
-const msg = messages[0];
-
-
-
-if(!msg.message) return;
-
-
-
-await runCommand(
-
-sock,
-
-msg,
-
-"."
-
-);
+});
 
 
 
 }
-
-
-);
-
-
-
-}
-
-
 
 
 
 startBot();
-
-
-
 
 
 
 httpServer.listen(
-
 PORT,
-
 ()=>{
 
 
 console.log(
-
 `🚀 ADEZ-MD running on ${PORT}`
-
 );
 
 
-}
-
-);
+});
