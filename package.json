@@ -1,20 +1,26 @@
 {
   "name": "adez-md",
   "version": "1.0.0",
-  "description": "ADEZ MD WhatsApp Bot",
+  "description": "ADEZ-MD WhatsApp Bot",
   "type": "module",
   "main": "index.js",
+
+  "engines": {
+    "node": "20.x"
+  },
+
   "scripts": {
     "start": "node index.js"
   },
+
   "dependencies": {
+    "@whiskeysockets/baileys": "6.7.18",
     "@supabase/supabase-js": "latest",
-    "@whiskeysockets/baileys": "latest",
-    "axios": "latest",
+    "adm-zip": "latest",
     "dotenv": "latest",
     "express": "latest",
     "pino": "latest",
-    "qrcode-terminal": "latest",
+    "qrcode": "latest",
     "socket.io": "latest"
   }
 }
