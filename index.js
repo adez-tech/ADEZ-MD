@@ -8,7 +8,11 @@ import {
   DisconnectReason
 } from "@whiskeysockets/baileys";
 import pino from "pino";
-
+import {
+ loadCommands,
+ loadObservers,
+ runCommand
+} from "./lib/router.js";
 dotenv.config();
 
 const app = express();
