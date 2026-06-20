@@ -15,7 +15,7 @@ import pino from "pino";
 import {
   loadCommands,
   loadObservers
-} from "./lib/router.js";
+} from "./router.js";
 
 
 dotenv.config();
@@ -26,9 +26,9 @@ const app = express();
 const httpServer = createServer(app);
 
 
-const io = new Server(httpServer,{
-  cors:{
-    origin:"*"
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*"
   }
 });
 
@@ -36,11 +36,7 @@ const io = new Server(httpServer,{
 const PORT = process.env.PORT || 3000;
 
 
-let currentQR = null;
-
-
-
-app.get("/",(req,res)=>{
+app.get("/", (req,res)=>{
 
 res.send(`
 
@@ -58,7 +54,7 @@ body{
 background:#111;
 color:white;
 text-align:center;
-font-family:sans-serif;
+font-family:Arial;
 }
 
 img{
@@ -73,14 +69,12 @@ margin-top:30px;
 
 <body>
 
-
 <h1>🚀 ADEZ-MD</h1>
 
-<p>Status: Online</p>
+<p>WhatsApp Bot Online</p>
 
 
 <img id="qr"/>
-
 
 
 <script src="/socket.io/socket.io.js"></script>
@@ -88,14 +82,12 @@ margin-top:30px;
 
 <script>
 
-
 const socket = io();
 
 
 socket.on("qr",(data)=>{
 
 document.getElementById("qr").src=data;
-
 
 });
 
@@ -105,15 +97,11 @@ document.getElementById("qr").src=data;
 
 </body>
 
-
 </html>
-
 
 `);
 
 });
-
-
 
 
 
@@ -124,7 +112,6 @@ let sock;
 async function startBot(){
 
 
-
 const {state,saveCreds} =
 await useMultiFileAuthState("./session");
 
@@ -132,25 +119,17 @@ await useMultiFileAuthState("./session");
 
 sock = makeWASocket({
 
-
-auth:state,
-
+auth: state,
 
 logger:pino({
-
 level:"silent"
-
 }),
-
 
 syncFullHistory:false,
 
-
 fireInitQueries:false
 
-
 });
-
 
 
 
@@ -158,8 +137,6 @@ sock.ev.on(
 "creds.update",
 saveCreds
 );
-
-
 
 
 
@@ -176,9 +153,7 @@ qr
 
 
 
-
 if(qr){
-
 
 console.log("QR Generated");
 
@@ -188,15 +163,10 @@ await QRCode.toDataURL(qr);
 
 
 
-currentQR = qrImage;
-
-
-
 io.emit(
 "qr",
 qrImage
 );
-
 
 
 }
@@ -212,9 +182,7 @@ console.log(
 );
 
 
-
 }
-
 
 
 
@@ -238,7 +206,6 @@ console.log(
 );
 
 
-
 }
 
 else{
@@ -249,9 +216,7 @@ console.log(
 );
 
 
-
 startBot();
-
 
 
 }
@@ -277,10 +242,7 @@ await loadObservers();
 
 
 
-
 startBot();
-
-
 
 
 
@@ -288,10 +250,8 @@ httpServer.listen(
 PORT,
 ()=>{
 
-
 console.log(
 `🚀 ADEZ-MD running on ${PORT}`
 );
-
 
 });
