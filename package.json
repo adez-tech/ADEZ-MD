@@ -12,13 +12,12 @@
   "scripts": {
     "start": "node index.js"
   },
-
-  "dependencies": {
-    "@whiskeysockets/baileys": "6.7.18",
-    "express": "latest",
-    "socket.io": "latest",
-    "dotenv": "latest",
-    "@supabase/supabase-js": "latest",
-    "adm-zip": "latest"
-  }
+"dependencies": {
+  "@whiskeysockets/baileys": "6.7.18",
+  "express": "latest",
+  "socket.io": "latest",
+  "dotenv": "latest",
+  "@supabase/supabase-js": "latest",
+  "adm-zip": "latest",
+  "pino": "latest"
 }
