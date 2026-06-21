@@ -2,180 +2,342 @@ import fs from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
 
+
 const commands = new Map();
-const observers = [];
-
-export async function loadCommands() {
-
-  const folder = "./commands";
-
-  if (!fs.existsSync(folder)) {
-    console.log("commands folder missing");
-    return;
-  }
-
-  async function scan(dir) {
-
-    const files = fs.readdirSync(dir);
-
-    for (const file of files) {
-
-      const full = path.join(dir, file);
-
-      if (fs.statSync(full).isDirectory()) {
-        await scan(full);
-        continue;
-      }
-
-      if (!file.endsWith(".js")) continue;
-
-      try {
-
-        const cmd = await import(
-          pathToFileURL(full)
-        );
-
-        if (!cmd.name) {
-          console.log(`❌ FAILED ${file}: missing name`);
-          continue;
-        }
-
-        if (commands.has(cmd.name)) {
-          console.log(`⚠️ Duplicate command skipped: ${cmd.name}`);
-          continue;
-        }
 
 
-        commands.set(cmd.name, cmd);
 
-        console.log(
-          `✅ Loaded: ${cmd.name} [${cmd.category || "Unknown"}]`
-        );
+async function scanFolder(folder){
 
 
-      } catch(error){
+if(!fs.existsSync(folder)){
 
-        console.log(
-          `❌ FAILED ${file}:`,
-          error.stack
-        );
+console.log(
+`⚠️ Folder missing: ${folder}`
+);
 
-      }
-
-    }
-
-  }
-
-
-  await scan(folder);
+return;
 
 }
 
 
 
-export function getAllCommands(){
+const files = fs.readdirSync(folder);
 
-  return commands;
+
+
+for(const file of files){
+
+
+const fullPath =
+path.join(folder,file);
+
+
+
+if(fs.statSync(fullPath).isDirectory()){
+
+
+await scanFolder(fullPath);
+
+
+continue;
 
 }
+
+
+
+
+if(!file.endsWith(".js")) continue;
+
+
+
+
+try{
+
+
+const command = await import(
+
+pathToFileURL(
+path.resolve(fullPath)
+).href
+
+);
+
+
+
+if(!command.name){
+
+
+console.log(
+`⚠️ ${file} missing export const name`
+);
+
+
+continue;
+
+}
+
+
+
+
+
+if(commands.has(command.name)){
+
+
+console.log(
+
+`⚠️ Duplicate command skipped: ${command.name}`
+
+);
+
+
+continue;
+
+}
+
+
+
+
+
+commands.set(
+
+command.name,
+
+command
+
+);
+
+
+
+
+console.log(
+
+`✅ Loaded: ${command.name} [${command.category || "General"}]`
+
+);
+
+
+
+
+}
+
+catch(error){
+
+
+console.log(
+
+`❌ FAILED ${file}:`
+
+);
+
+
+console.log(error.stack);
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+
+
+export async function loadCommands(){
+
+
+await scanFolder("./commands");
+
+
+}
+
+
 
 
 
 export async function loadObservers(){
 
- const folder="./observers";
-
- if(!fs.existsSync(folder)) return;
 
 
- for(const file of fs.readdirSync(folder)){
-
-   if(!file.endsWith(".js")) continue;
+const folder="./observers";
 
 
-   try{
 
-    const obs = await import(
-      pathToFileURL(
-        path.join(folder,file)
-      )
-    );
-
-    observers.push(obs);
-
-    console.log(
-      `👀 Observer loaded: ${file}`
-    );
+if(!fs.existsSync(folder)){
 
 
-   }catch(error){
+console.log(
+"⚠️ No observers folder"
+);
 
-    console.log(
-      `❌ Observer failed ${file}`,
-      error.stack
-    );
 
-   }
-
- }
+return;
 
 }
 
 
 
-export async function runCommand(
- sock,
- msg,
- prefix="."
-){
-
- try{
-
-
- const text =
- msg.message?.conversation ||
- "";
-
-
- if(!text.startsWith(prefix))
- return;
-
-
- const args=text
- .slice(prefix.length)
- .trim()
- .split(/\s+/);
-
-
- const name=args.shift()
- .toLowerCase();
+await scanFolder(folder);
 
 
 
- const command=commands.get(name);
-
-
- if(!command)
- return;
-
-
-
- await command.run({
-  sock,
-  msg,
-  args
- });
+console.log(
+"✅ Observers loaded"
+);
 
 
 
- }catch(error){
-
- console.log(
- "❌ COMMAND ERROR:",
- error.stack
- );
+}
 
 
- }
 
-      }
+
+
+
+
+export function getAllCommands(){
+
+
+return commands;
+
+
+}
+
+
+
+
+
+
+
+
+export function resolveLid(jid){
+
+
+
+if(jid?.endsWith("@lid")){
+
+
+return jid.replace(
+
+"@lid",
+
+"@s.whatsapp.net"
+
+);
+
+
+}
+
+
+
+return jid;
+
+
+}
+
+
+
+
+
+
+
+
+export async function runCommand(sock,msg){
+
+
+
+const text =
+
+msg.message?.conversation ||
+
+msg.message?.extendedTextMessage?.text;
+
+
+
+if(!text) return;
+
+
+
+if(!text.startsWith(".")) return;
+
+
+
+
+const args = text
+
+.slice(1)
+
+.trim()
+
+.split(/\s+/);
+
+
+
+const commandName =
+
+args.shift()
+
+.toLowerCase();
+
+
+
+
+const command =
+
+commands.get(commandName);
+
+
+
+if(!command) return;
+
+
+
+
+
+try{
+
+
+await command.execute(
+
+sock,
+
+msg,
+
+args
+
+);
+
+
+
+}
+
+catch(error){
+
+
+
+console.log(
+
+`❌ Command error ${commandName}`
+
+);
+
+
+
+console.log(
+
+error.stack
+
+);
+
+
+
+}
+
+
+
+}
