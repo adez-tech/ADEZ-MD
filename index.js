@@ -10,7 +10,8 @@ import pino from "pino";
 
 import {
   loadCommands,
-  loadObservers
+  loadObservers,
+  runCommand
 } from "./router.js";
 
 
@@ -49,40 +50,16 @@ res.send(`
 
 <html>
 
-<head>
-
-<title>ADEZ-MD</title>
-
-<style>
-
-body{
-background:#111;
-color:white;
-text-align:center;
-font-family:Arial;
-}
-
-img{
-width:300px;
-margin-top:30px;
-}
-
-</style>
-
-</head>
-
-
-<body>
+<body style="background:#111;color:white;text-align:center;font-family:Arial">
 
 <h1>🚀 ADEZ-MD</h1>
 
-<p>WhatsApp Bot Online</p>
+<p>Scan WhatsApp QR</p>
 
-<img id="qr">
+<img id="qr" width="300">
 
 
 <script src="/socket.io/socket.io.js"></script>
-
 
 <script>
 
@@ -114,15 +91,22 @@ document.getElementById("qr").src=data;
 let sock;
 
 
+let starting = false;
+
+
 
 async function startBot(){
 
 
-const { state, saveCreds } =
+if(starting) return;
+
+starting = true;
+
+
+
+const {state,saveCreds} =
 
 await useMultiFileAuthState("./session");
-
-
 
 
 
@@ -149,12 +133,10 @@ fireInitQueries:false
 
 
 
-
 sock.ev.on(
 "creds.update",
 saveCreds
 );
-
 
 
 
@@ -170,6 +152,30 @@ await loadObservers();
 
 
 sock.ev.on(
+"messages.upsert",
+async({messages})=>{
+
+
+const msg = messages[0];
+
+
+if(!msg.message) return;
+
+
+await runCommand(
+sock,
+msg
+);
+
+
+});
+
+
+
+
+
+
+sock.ev.on(
 "connection.update",
 async(update)=>{
 
@@ -178,6 +184,7 @@ const {
 connection,
 lastDisconnect,
 qr
+
 }=update;
 
 
@@ -192,7 +199,7 @@ console.log(
 
 
 
-const qrImage =
+const image =
 
 await QRCode.toDataURL(qr);
 
@@ -200,7 +207,7 @@ await QRCode.toDataURL(qr);
 
 io.emit(
 "qr",
-qrImage
+image
 );
 
 
@@ -218,6 +225,9 @@ console.log(
 );
 
 
+starting=false;
+
+
 }
 
 
@@ -228,12 +238,24 @@ console.log(
 if(connection==="close"){
 
 
-const reason =
+starting=false;
 
-lastDisconnect
-?.error
-?.output
-?.statusCode;
+
+
+const error =
+lastDisconnect?.error;
+
+
+
+const reason =
+error?.output?.statusCode;
+
+
+
+console.log(
+"Connection closed:",
+reason
+);
 
 
 
@@ -247,46 +269,33 @@ console.log(
 );
 
 
-}
-
-else{
-
-
-console.log(
-"Reconnecting..."
-);
-
-
-startBot();
-
-
-}
-
-
-
-}
-
-
-
-});
-
-
-
-
-sock.ev.on(
-"messages.upsert",
-async({messages})=>{
-
-
-const msg = messages[0];
-
-
-if(!msg.message)
 return;
 
 
+}
 
-// commands handled by router
+
+
+
+
+console.log(
+"Reconnecting in 5 seconds..."
+);
+
+
+
+setTimeout(()=>{
+
+
+startBot();
+
+
+},5000);
+
+
+
+}
+
 
 
 });
@@ -297,10 +306,7 @@ return;
 
 
 
-
-
 startBot();
-
 
 
 
